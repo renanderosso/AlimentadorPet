@@ -101,7 +101,7 @@ void loop() {
     Serial.print(currentDate);
     Serial.println();
 
-    Blynk.virtualWrite(V1, currentTime);                                          /* Send Time parameters to Virtual Pin V1 on Blynk App */
+    Blynk.virtualWrite(V1, currentTime); ////ASIAASIUASIUBAS                                         /* Send Time parameters to Virtual Pin V1 on Blynk App */
     Blynk.virtualWrite(V2, currentDate);                                          /* Send Date parameters to Virtual Pin V2 on Blynk App */
     
     int getSecond = second();                                                     /* Assign "getHour" as the hour now */
