@@ -6,6 +6,8 @@
 #include <SPI.h>
 #include <WidgetRTC.h>
 #include <TimeLib.h>
+#include <DHT.h>
+#include <Adafruit_Sensor.h>
 #ifdef __AVR__
 #include <avr/power.h>
 #endif
@@ -17,6 +19,9 @@ unsigned long startMillis;         /* start counting time for display refresh*/
 unsigned long currentMillis;       /* current counting time for display refresh */
 const unsigned long period = 1000; // refresh every X seconds (in seconds) Default 60000 = 1 minute
 
+#define DHTPIN 12 // pino que estamos conectado
+#define DHTTYPE DHT11 // DHT 11
+
 //---- Pinos de controle -----
 #define STP 27 // Avanço do passo
 #define DIR 26 // Direção do passo
@@ -26,6 +31,7 @@ const unsigned long period = 1000; // refresh every X seconds (in seconds) Defau
 char auth[] = "pw5i09G8QO__X1bx2Pk7SwjvSfi2AmQz";
 char ssid[] = "Rosso-Intel";
 char pass[] = "055A64F7";
+DHT dht(DHTPIN, DHTTYPE);
 
 bool set_motor = false;
 int PPR = 3000;
@@ -41,6 +47,7 @@ void setup()
 {
   Serial.begin(115200);
   Blynk.begin(auth, ssid, pass);
+  dht.begin();
   setSyncInterval(1); /* Synchronise or read time from the Blynk Server every 1 second */
   while (Blynk.connect() == false)
   {
@@ -82,9 +89,6 @@ void ciclo()
     yield();
   }
   passo = 0; // valor de passso muda pra 0
-  // delay(1000);
-  // Inicia o Sentido Anti-horário
-  passo = 0;
 }
 
 void loop()
@@ -126,5 +130,20 @@ void loop()
     // set_motor = false;
     Serial.println("Resolução 3000 passo");
     ciclo();
+  }
+  // A leitura da temperatura e umidade pode levar 250ms!
+  // O atraso do sensor pode chegar a 2 segundos.
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  // testa se retorno é valido, caso contrário algo está errado.
+  if (isnan(t) || isnan(h)) 
+  {
+    Serial.println("Failed to read from DHT");
+  } 
+  else
+  {
+    Blynk.virtualWrite(V3, t);
+    Blynk.virtualWrite(V5, h);
+
   }
 }
