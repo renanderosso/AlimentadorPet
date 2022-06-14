@@ -46,9 +46,9 @@ void takePhoto()
   delay(1000);
 }
 
-unsigned long startMillis;         /* start counting time for display refresh*/
-unsigned long currentMillis;       /* current counting time for display refresh */
-const unsigned long period = 1000; // refresh every X seconds (in seconds) Default 60000 = 1 minute
+unsigned long startMillis;              /* start counting time for display refresh*/
+unsigned long currentMillis;            /* current counting time for display refresh */
+const unsigned long period = 60 * 1000; // refresh every X seconds (in seconds) Default 60000 = 1 minute
 
 #define DHTPIN 16     // pino que estamos conectado
 #define DHTTYPE DHT11 // DHT 11
@@ -60,14 +60,17 @@ const unsigned long period = 1000; // refresh every X seconds (in seconds) Defau
 //---- Variáveis de controle ----
 
 char auth[] = "pw5i09G8QO__X1bx2Pk7SwjvSfi2AmQz";
-char rede[] = "Rosso";
-char pass[] = "055A64F7";
+// char rede[] = "Rosso";
+// char pass[] = "055A64F7";
+
+char rede[] = "redefazenda";
+char pass[] = "12345678";
 DHT dht(DHTPIN, DHTTYPE);
 
 bool set_motor = false;
-int PPR = 3000;
+int PPR = 3200;
 int passo = 0;  // passos
-int temp = 200; // tempo entre os passos
+int temp = 800; // tempo entre os passos
 
 BLYNK_CONNECTED() /* When Blynk server is connected, initiate Real Time Clock function */
 {
@@ -155,19 +158,20 @@ void setup()
 
   s->set_framesize(s, FRAMESIZE_QVGA);
 
-  WiFi.begin(ssid, password);
+  // WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
+  // while (WiFi.status() != WL_CONNECTED)
+  // {
+  //   delay(500);
+  //   Serial.print(".");
+  // }
+  // Serial.println("");
+  // Serial.println("WiFi connected");
+
+  Blynk.begin(auth, rede, pass);
 
   startCameraServer();
 
-  Blynk.begin(auth, rede, pass);
   Serial.print("Camera Ready! Use 'http://");
   Serial.print(WiFi.localIP());
   local_IP = WiFi.localIP().toString();
@@ -176,8 +180,9 @@ void setup()
   setSyncInterval(1); /* Synchronise or read time from the Blynk Server every 1 second */
   while (Blynk.connect() == false)
   {
-  }                         /* If the Blynk Server not yet connected to nodeMCU, keep waiting here */
-  setSyncInterval(10 * 60); /* After successful login, change Synchornise Time reading for every 10 minute (Do not need to always check for the time)*/
+  } /* If the Blynk Server not yet connected to nodeMCU, keep waiting here */
+  // 10*60
+  setSyncInterval(30); /* After successful login, change Synchornise Time reading for every 10 minute (Do not need to always check for the time)*/
 
   startMillis = millis(); /* Start record initial time for display refresh */
   pinMode(STP, OUTPUT);
@@ -190,11 +195,26 @@ void setup()
   Serial.println("End");
 }
 
-BLYNK_WRITE(V4) // Button Widget is writing to pin V4
+BLYNK_WRITE(V4)
 {
   set_motor = param.asInt();
   Serial.println("Motor ->" + String(set_motor));
 }
+
+int gramas = 1;
+int voltas = 1;
+BLYNK_WRITE(V7)
+{
+  gramas = param.asInt();
+  Serial.println("Gramas -> " + String(gramas));
+  voltas = gramas / 7;
+  Serial.println("Voltas -> " + String(voltas));
+}
+
+// BLYNK_READ(V7)
+// {
+
+// }
 
 void HR()
 { // Sentido Horário
@@ -206,7 +226,7 @@ void HR()
 void ciclo()
 {
   HR();
-  for (passo = 0; PPR > passo; passo++)
+  for (passo = 0; PPR * voltas > passo; passo++)
   { // Enquanto PPR for maior que passo
     // Avança o passo
     digitalWrite(STP, LOW);
@@ -216,6 +236,8 @@ void ciclo()
     yield();
   }
   passo = 0; // valor de passso muda pra 0
+  set_motor = false;
+  // Blynk.setProperty(V4, 0);
 }
 
 void loop()
@@ -245,15 +267,15 @@ void loop()
     Blynk.virtualWrite(V6, currentTime); /* Send Time parameters to Virtual Pin V6 on Blynk App */
     Blynk.virtualWrite(V2, currentDate); /* Send Date parameters to Virtual Pin V2 on Blynk App */
 
-    int getSecond = second(); /* Assign "getHour" as the hour now */
-    if (getSecond > 30)
-    {
-      digitalWrite(2, HIGH);
-    } /* Turn OFF the LED if seconds count is more than 30 */
-    if (getSecond < 30)
-    {
-      digitalWrite(2, LOW);
-    }                       /* Turn ON the LED if the seconds count is less than 30 */
+    // int getSecond = second(); /* Assign "getHour" as the hour now */
+    // if (getSecond > 30)
+    // {
+    //   digitalWrite(2, HIGH);
+    // } /* Turn OFF the LED if seconds count is more than 30 */
+    // if (getSecond < 30)
+    // {
+    //   digitalWrite(2, LOW);
+    // }                       /* Turn ON the LED if the seconds count is less than 30 */
     startMillis = millis(); /* Reset time for the next counting cycle */
   }
 
@@ -277,4 +299,33 @@ void loop()
   //   Blynk.virtualWrite(V3, t);
   //   Blynk.virtualWrite(V5, h);
   // }
+  if (Serial.available() > 0)
+  {
+    String income = Serial.readString();
+    if (income == "oi")
+    {
+      Serial.println("oi");
+    }
+    else if (income == "rst")
+    {
+      Serial.println("REINICIANDO...");
+      delay(1000);
+      ESP.restart();
+    }
+    else if (income == "+")
+    {
+      temp = temp + 50;
+      Serial.println("TEMP " + String(temp));
+    }
+    else if (income == "-")
+    {
+      temp = temp - 50;
+      Serial.println("TEMP " + String(temp));
+    }
+    else if (income == "rod")
+    {
+      set_motor = true;
+      Serial.println("RODA SAFADA");
+    }
+  }
 }
